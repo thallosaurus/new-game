@@ -54,32 +54,72 @@ class TiledTilesetData implements TiledTilesetData {
                 this._rawImageData = image;
             });
     }
-    getTile(tileId: number): ImageBitmap {
-        let offscreenCanvas = new OffscreenCanvas(this.tilewidth, this.tileheight);
-        let offCtx = offscreenCanvas.getContext("2d")! as OffscreenCanvasRenderingContext2D;
+
+    unload() {
+        URL.revokeObjectURL(this._rawImageData!.src);
+        console.log("unloaded", this._rawImageData!.src);
+    }
+
+    drawTile(ctx: CanvasRenderingContext2D, tileId: number, x: number, y: number): {
+        index: number,x: number, y: number, width: number, height: number
+    } {
+        //ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+        //let offscreenCanvas = new OffscreenCanvas(this.tilewidth, this.tileheight);
+        //let offCtx = offscreenCanvas.getContext("2d")! as OffscreenCanvasRenderingContext2D;
+        //console.log(this.columns, this.tilecount / this.columns);
+        //let xy = getXY(tileId, this.columns, this.tilecount / this.columns / this.tilewidth);
+        let dimen = this.getSourceDimension(tileId);
         if (this._rawImageData) {
-            //console.log(xy);
-            let xy = getXY(tileId, this.columns, this.tilecount / this.columns);
-            offCtx.drawImage(this._rawImageData, xy.x * this.tilewidth, xy.y * this.tileheight, this.tilewidth, this.tileheight, 0, 0, this.tilewidth, this.tileheight);
-            
+            //console.log(dimen);
+            ctx.drawImage(this._rawImageData,
+                dimen.x,
+                dimen.y,
+                dimen.width,
+                dimen.height,
+
+                x * this.tilewidth,
+                y * this.tileheight,
+                this.tilewidth,
+                this.tileheight
+            );
+
             //let x = this.columns % tileId;
             //let y = Math.floor(this.columns / tileId);
             //console.log(x);
-        } else {
-        offCtx.fillStyle = "red";
-        //console.log(xy);
-            offCtx.fillRect(0, 0, offCtx.canvas.width, offCtx.canvas.height);
-            
-            offCtx.fillStyle = "black";
-            offCtx.font = "8px Arial";
-            offCtx.fillText(String(tileId), 8, 8);
         }
+        //console.log(xy);
+
+        ctx.fillStyle = "blue";
+        ctx.font = "6px Arial";
+        ctx.fillText(`(${tileId})`, x * this.tilewidth + 2, y * this.tileheight + 8);
+        //}
         //offCtx.commit();
 
-        let bitmap = offscreenCanvas.transferToImageBitmap();
+        //let bitmap = offscreenCanvas.transferToImageBitmap();
         //console.log(bitmap);
 
-        return bitmap;
+        //return bitmap;
+
+        return dimen;
+    }
+
+    private getSourceDimension(index: number): {
+        index: number,
+        x: number,
+        y: number,
+        width: number,
+        height: number
+    } {
+        let xy = getXY(index - 1, this.columns, this.tilecount / this.columns);
+        //console.log(xy);
+
+        return {
+            index: index,
+            x: xy.x * this.tilewidth,
+            y: xy.y * this.tileheight,
+            width: this.tilewidth,
+            height: this.tileheight
+        }
     }
 }
 
@@ -148,64 +188,30 @@ export class TiledJsonMap implements TiledJsonMap {
             })
     }
 
-    drawGl(gl: WebGLRenderingContext) {
-        let bitmap = this.tilesets[0]._tilesetData.getTile(0);
-        loadTexture(gl, bitmap);
-        gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
-
-        const textureCoordinates = [
-            0.0, 0.0, 1.0, 0.0,
-            0.0, 1.0, 1.0, 1.0
-        ];
-
-        initTextureBuffer(gl, new Float32Array(textureCoordinates));
-
-        //return textureCoordBuffer;
-
-        /*function initTextureBuffer(gl) {
-            const textureCoordBuffer = gl.createBuffer();
-            gl.bindBuffer(gl.ARRAY_BUFFER, textureCoordBuffer);
-          
-            const textureCoordinates = [
-              // Front
-              0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0,
-              // Back
-              0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0,
-              // Top
-              0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0,
-              // Bottom
-              0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0,
-              // Right
-              0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0,
-              // Left
-              0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0,
-            ];
-          
-            gl.bufferData(
-              gl.ARRAY_BUFFER,
-              new Float32Array(textureCoordinates),
-              gl.STATIC_DRAW
-            );
-          
-            return textureCoordBuffer;
-          }*/
-    }
-
     draw(ctx: CanvasRenderingContext2D) {
+        //let debugDimensionBuffer = [];
 
-            for (const layer of this.layers) {
-                for (let y = 0; y < layer.height; y++) {
-                    for (let x = 0; x < layer.width; x++) {
-                        let tileNumber = this.getAtXY(layer.id, x, y);
-                        if (this.tilesets[0]._tilesetData) {
-                            let bitmap = this.tilesets[0]._tilesetData.getTile(tileNumber);
-                            console.log();
-                            ctx.drawImage(bitmap, x * this.tilewidth, y * this.tileheight);
-                            bitmap.close();
-                        }
+        for (const layer of this.layers) {
+            for (let y = 0; y < layer.height; y++) {
+                for (let x = 0; x < layer.width; x++) {
+                    let tileNumber = this.getAtXY(layer.id, x, y);
+                    if (this.tilesets[0]._tilesetData) {
+                        let tile = this.tilesets[0]._tilesetData.drawTile(ctx, tileNumber, x, y);
+                        /*if (this.tilesets[0]._tilesetData._rawImageData != null) {
+
+                            debugDimensionBuffer.push(tile);
+                        }*/
+                        //console.log();
+                        //ctx.drawImage(bitmap, x * this.tilewidth, y * this.tileheight);
+                        //bitmap.close();
                     }
                 }
             }
+        }
+        /*if (!this.debugFlag && this.tilesets[0]._tilesetData._rawImageData != null) {
+            console.log(debugDimensionBuffer);
+            this.debugFlag = true;
+        }*/
     }
 
     private getAtXY(layerId: number, x: number, y: number): number {
@@ -275,6 +281,7 @@ function parseXml(doc: Element): Object {
 
 function getXY(i: number, w: number, h: number) {
     let x = i % w;
-    let y = Math.floor(i / h);
+    let y = Math.ceil(Number(i) / Number(h) * 100);
+    //console.log(y);
     return { x: x, y: y };
 }

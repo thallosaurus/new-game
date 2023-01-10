@@ -55,11 +55,7 @@ window.addEventListener("load", (ev) => {
                 }
 
                 requestAnimationFrame(drawLoop);
-
-                
-                //console.log(m);
             }
-            //setInterval(drawLoop, 100);
             requestAnimationFrame(drawLoop);
         });
 });
